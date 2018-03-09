@@ -1,0 +1,12 @@
+DEFAULT_DEVICE_GROUP = {
+    'name': 'default',
+    'devices': [
+    {% for client in clients_router %}
+      {% for ip in client %}
+        {"name":"{{client[ip]}}", "ip":"{{ip}}"},
+      {%endfor%}
+    {% endfor %}
+
+    ],
+    'compare_devices': [] 
+}

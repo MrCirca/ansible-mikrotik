@@ -1,0 +1,5 @@
+---
+- name: Create backup inventory
+  template:
+    src: backup.py.j2
+    dest: /home/mrcirca/backup.py

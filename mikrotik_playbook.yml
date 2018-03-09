@@ -1,0 +1,5 @@
+---
+- hosts: localhost 
+  roles:
+    - role: mikrotik
+  gather_facts: no

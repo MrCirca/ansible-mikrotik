@@ -1,0 +1,27 @@
+---
+- name: Check Mikrotik SNMP status 
+  raw: /snmp print; quit
+  register: output
+
+- name: Check SNMP Community status
+  raw: /snmp community print; quit
+  register: snmp_community_output
+
+- name: Debug
+  debug:
+    msg: "{{snmp_community_output}}"
+
+- name: Enable snmp if it's disabled
+  raw: /snmp set enabled={{item.snmp_enable}}; quit
+  when: "'enabled: no' in output.stdout_lines[2] | regex_replace('(\\x1B\\[[0-?]*[-/]*[@-~]|\\x1B7|\\x1B8|\\r)', '') and item.snmp_enable=='yes'"
+  with_items: "{{mikrotik_snmp}}"
+
+- name: Enable community with src-address
+  raw: /snmp community set addresses={{item.snmp_community_addresses}} numbers={{item.snmp_community_numbers}}; quit
+  when: item.snmp_community_addresses is defined and item.snmp_community_numbers is defined and item.snmp_community_addresses not in snmp_community_output.stdout_lines[4]
+  with_items: "{{mikrotik_snmp}}"
+
+- name: Disable snmp if it's enabled
+  raw: /snmp set enabled={{item.snmp_enable}}; quit
+  when: "'enabled: yes' in output.stdout_lines[2] | regex_replace('(\\x1B\\[[0-?]*[-/]*[@-~]|\\x1B7|\\x1B8|\\r)', '') and item.snmp_enable=='no'"
+  with_items: "{{mikrotik_snmp}}"
