@@ -1,0 +1,272 @@
+# Edit the user password
+{% for user in routeros_users %}
+ /user set {{ user.name }} password={{ user.password }}
+{% endfor %}
+
+{% for bridge in routeros_bridge_interfaces %}
+/interface bridge add disabled=no name={{ bridge }}
+{% for port in routeros_bridge_interfaces[bridge].ports %}
+/interface bridge port add bridge={{ bridge }} disabled=no edge=auto external-fdb=auto horizon=none interface={{ port }} path-cost=10 point-to-point=auto
+{% endfor %}
+/ip address add address={{ routeros_bridge_interfaces[bridge].ip_address }} disabled=no
+interface={{ bridge }}
+
+/ip dhcp-server network add address= dhcp-option="" dns-server={{ routeros_bridge_interfaces[bridge].gw }} gateway={{ routeros_bridge_interfaces[bridge].gw }} ntp-server="" wins-server=""
+
+/ip firewall address-list add address= list=
+{% endfor %}
+
+{% for dhcp in routeros_dhcp %}
+/ip pool add name={{ routeros_dhcp[dhcp].pool_name }} range={{ routeros_dhcp[dhcp].ip_range }}
+/ip dhcp-server add address-pool={{ routeros_dhcp[dhcp].pool_name }} authoritative=after-2sec-delay bootp-support=static interface={{ routeros_dhcp[dhcp].interface }} lease-time=3d name={{ dhcp }}
+{% endfor %}
+
+{% for dsl in routeros_adsl %}
+/interface pppoe-client add ac-name="" add-default-route=no allow=pap,chap,mschap1,mschap2 dial-on-demand=no disabled=no interface={{ dsl.interface }} max-mru=1480 max-mtu=1480 mrru=disabled name={{ dsl.name }} password={{ dsl.password }} profile=default service-name="" use-peer-dns=yes user={{ dsl.username }}
+
+/ip dhcp-client add default-route-distance=100 dhcp-options=hostname,clientid disabled=no interface={{ dsl.interface }}
+{% for list in routeros_address_lists %}
+/ip firewall mangle add action=mark-packet chain=postrouting disabled=no new-packet-mark={{ dsl.name }}-{{ list }}-out out-interface={{dsl.interface}} passthrough=yes src-address-list={{list}}
+{% endfor %}
+
+/ip firewall mangle add action=mark-packet chain=postrouting disabled=no
+new-packet-mark=({{dsl.interface}} . "-p2p-out") out-interface={{dsl.interface}} p2p=all-p2p passthrough=yes
+
+/ip firewall mangle add action=mark-packet chain=postrouting disabled=no
+new-packet-mark=({{dsl.interface}} . "-gre-out") out-interface={{dsl.interface}} passthrough=yes protocol=gre
+
+/ip firewall mangle add action=mark-packet chain=postrouting disabled=no dscp=11
+new-packet-mark=({{dsl.interface}} . "-medium-voip-out") out-interface={{dsl.interface}} passthrough=yes protocol=udp src-address-list=medium
+
+/ip firewall mangle add action=mark-packet chain=postrouting disabled=no dscp=24 
+new-packet-mark=({{dsl.interface}} . "-medium-voip-out") out-interface={{dsl.interface}}
+passthrough=yes protocol=udp src-address-list=medium
+
+/ip firewall mangle add action=mark-packet chain=postrouting disabled=no dscp=26 
+new-packet-mark=({{dsl.interface}} . "-medium-voip-out") out-interface={{dsl.interface}}
+passthrough=yes protocol=udp src-address-list=medium
+
+/ip firewall mangle add action=mark-packet chain=postrouting disabled=no dscp=40 
+new-packet-mark=({{dsl.interface}} . "-medium-voip-out") out-interface={{dsl.interface}}
+passthrough=yes protocol=udp src-address-list=medium
+
+/ip firewall mangle add action=mark-packet chain=postrouting disabled=no dscp=48 
+new-packet-mark=({{dsl.interface}} . "-medium-voip-out") out-interface={{dsl.interface}}
+passthrough=yes protocol=udp src-address-list=medium
+
+q
+/ip firewall mangle add action=mark-packet chain=postrouting disabled=no dscp=6
+new-packet-mark=({{dsl.interface}} . "-medium-voip-out") out-interface={{dsl.interface}}
+passthrough=yes protocol=udp src-address-list=medium
+
+/ip firewall mangle add action=mark-packet chain=postrouting disabled=no dscp=46
+new-packet-mark=({{dsl.interface}} . "-medium-voip-out") out-interface={{dsl.interface}}
+passthrough=yes protocol=udp src-address-list=medium
+
+/ip firewall mangle add action=mark-packet chain=postrouting connection-type=sip
+disabled=no new-packet-mark=({{dsl.interface}} . "-medium-voip-out")
+out-interface={{dsl.interface}} passthrough=yes src-address-list=medium
+
+/ip firewall mangle add action=mark-packet chain=postrouting disabled=no dscp=11
+new-packet-mark=({{dsl.interface}} . "-critical-voip-out") out-interface={{dsl.interface}} passthrough=yes protocol=udp src-address-list=critical
+
+/ip firewall mangle add action=mark-packet chain=postrouting disabled=no dscp=6
+new-packet-mark=({{dsl.interface}} . "-critical-voip-out") out-interface={{dsl.interface}} passthrough=yes protocol=udp src-address-list=critical
+
+/ip firewall mangle add action=mark-packet chain=postrouting disabled=no dscp=46
+new-packet-mark=({{dsl.interface}} . "-critical-voip-out") out-interface={{dsl.interface}} passthrough=yes protocol=udp src-address-list=critical
+
+/ip firewall mangle add action=mark-packet chain=postrouting disabled=no dscp=48
+new-packet-mark=({{dsl.interface}} . "-critical-voip-out") out-interface={{dsl.interface}} passthrough=yes protocol=udp src-address-list=critical
+
+/ip firewall mangle add action=mark-packet chain=postrouting disabled=no dscp=24
+new-packet-mark=({{dsl.interface}} . "-critical-voip-out") out-interface={{dsl.interface}} passthrough=yes protocol=udp src-address-list=critical
+
+/ip firewall mangle add action=mark-packet chain=postrouting disabled=no dscp=26
+new-packet-mark=({{dsl.interface}} . "-critical-voip-out") out-interface={{dsl.interface}} passthrough=yes protocol=udp src-address-list=critical
+
+/ip firewall mangle add action=mark-packet chain=postrouting connection-type=sip
+disabled=no new-packet-mark=({{dsl.interface}} . "-critical-voip-out")
+out-interface={{dsl.interface}} passthrough=yes src-address-list=critical
+
+/ip firewall mangle add action=mark-packet chain=postrouting disabled=no new-packet-mark=
+({{dsl.interface}} . "-critical-out") out-interface={{dsl.interface}} packet-size=0-40 passthrough=yes protocol=tcp tcp-flags=ack
+
+/ip firewall mangle add action=mark-packet chain=forward disabled=no
+in-interface={{dsl.interface}} new-packet-mark=({{dsl.interface}} . "-in") passthrough=yes
+
+/ip firewall mangle add action=mark-packet chain=forward disabled=no
+dst-address-list=non-critical in-interface={{dsl.interface}}
+new-packet-mark=({{dsl.interface}} . "-non-critical-in") passthrough=yes
+
+/ip firewall mangle add action=mark-packet chain=forward disabled=no
+dst-address-list=medium in-interface={{dsl.interface}} new-packet-mark=({{dsl.interface}} . "-medium-in") passthrough=yes
+
+/ip firewall mangle add action=mark-packet chain=forward disabled=no
+dst-address-list=critical in-interface={{dsl.interface}} new-packet-mark=({{dsl.interface}} . "-critical-in") passthrough=yes
+
+/ip firewall mangle add action=change-mss chain=forward disabled=yes
+in-interface={{dsl.interface}} new-mss=1400 passthrough=yes protocol=tcp tcp-flags=syn tcp-mss=1401-65535
+
+/ip firewall mangle add action=change-mss chain=forward disabled=yes new-mss=1400
+out-interface={{dsl.interface}} passthrough=yes protocol=tcp tcp-flags=syn tcp-mss=1401-65535
+
+/queue tree add burst-limit=0 burst-threshold=0 burst-time=0s disabled=no
+limit-at=({{dsl.up}} *1000 / 32 * 32) max-limit=({{dsl.up}} * 1000 / 32 * 32) name=({{dsl.interface}} .
+"-upload") packet-mark="" parent={{dsl.interface}} priority=2 
+
+/queue tree add burst-limit=0 burst-threshold=0 burst-time=0s disabled=no limit-at=({{dsl.up}} * 1000 / 32 * 16) max-limit=({{dsl.up}} * 1000 / 32 * 32) name=({{dsl.interface}} . "-Critical") packet-mark="" parent=({{dsl.interface}} . "-upload") priority=2
+
+/queue tree add burst-limit=0 burst-threshold=0 burst-time=0s disabled=no limit-at=({{dsl.up}} * 1000 / 32 * 10) max-limit=({{dsl.up}} * 1000 / 32 * 18) name=({{dsl.interface}} ."-Medium") packet-mark="" parent=({{dsl.interface}} . "-upload") priority=2
+
+/queue tree add burst-limit=0 burst-threshold=0 burst-time=0s
+disabled=nolimit-at=({{dsl.up}} * 1000 / 32 * 6) limit-at=({{dsl.up}} * 1000 / 32 * 13)
+name=({{dsl.interface}} . "-Non-critical") packet-mark="" parent=({{dsl.interface}} . "-upload") priority=8
+
+/queue tree add burst-limit=0 burst-threshold=0 burst-time=0s disabled=no
+limit-at=({{dsl.down}} * 1000 / 32 * 32) max-limit=({{dsl.down}} * 1000 / 32 * 32) name=({{dsl.interface}} . "-download") packet-mark=({{dsl.interface}} . "-in") parent=global priority=8
+
+/queue tree add burst-limit=0 burst-threshold=0 burst-time=0s disabled=no
+limit-at=({{dsl.up}} * 1000 / 32 * 2) max-limit=({{dsl.up}} * 1000 / 32 * 16)
+name=({{dsl.interface}} . "-vpns-in") packet-mark=({{dsl.interface}} . "-gre-out") parent=({{dsl.interface}} . "-Medium") priority=5 queue=pcq-dst
+
+/queue tree add burst-limit=0 burst-threshold=0 burst-time=0s disabled=no limit-at=({{dsl.up}} * 1000 / 32 * 2) max-limit=({{dsl.up}} * 1000 / 32 * 5) name=({{dsl.interface}} . "-p2p") packet-mark=({{dsl.interface}} . "-p2p-out") parent=({{dsl.interface}} . "-Non-critical")priority=8 queue=pcq-dst
+
+/queue tree add burst-limit=0 burst-threshold=0 burst-time=0s disabled=no limit-at=({{dsl.up}} * 1000 / 32 * 6) max-limit=({{dsl.up}} * 1000 / 32 * 18) name=({{dsl.interface}} . "-use-critical") packet-mark=({{dsl.interface}} . "-critical-out") parent=({{dsl.interface}} . "-Critical") priority=4 queue=pcq-src
+
+/queue tree add burst-limit=0 burst-threshold=0 burst-time=0s disabled=no limit-at=({{dsl.up}} * 1000 / 32 * 5) max-limit=({{dsl.up}} * 1000 / 32 * 17) name=({{dsl.interface}} . "-use-medium") packet-mark=({{dsl.interface}} . "-medium-out") parent=({{dsl.interface}} . "-Medium") priority=5 queue=pcq-src
+
+/queue tree add burst-limit=0 burst-threshold=0 burst-time=0s disabled=no limit-at=({{dsl.up}} * 1000 / 32 * 4) max-limit=({{dsl.up}} * 1000 / 32 * 10) name=({{dsl.interface}} . "-use-non-critical") packet-mark=({{dsl.interface}} . "-non-critical-out") parent=({{dsl.interface}} . "-Non-critical") priority=6 queue=pcq-src
+
+/queue tree add burst-limit=0 burst-threshold=0 burst-time=0s disabled=no limit-at=({{dsl.up}} * 1000 / 32 * 10) max-limit=({{dsl.up}} * 1000 / 32 * 32) name=({{dsl.interface}} . "-voip-critical") packet-mark=({{dsl.interface}} . "-critical-voip-out") parent=({{dsl.interface}} . "-Critical") priority=1 queue=pcq-src
+
+/queue tree add burst-limit=0 burst-threshold=0 burst-time=0s disabled=no limit-at=({{dsl.up}} * 1000 / 32 * 3) max-limit=({{dsl.up}} * 1000 / 32 * 16) name=({{dsl.interface}} . "-voip-medium") packet-mark=({{dsl.interface}} . "-medium-voip-out") parent=({{dsl.interface}} . "-Medium") priority=2 queue=pcq-src
+
+/queue tree add burst-limit=0 burst-threshold=0 burst-time=0s disabled=no limit-at=({{dsl.down}} * 1000 / 32* 16) max-limit=({{dsl.down}} * 1000 / 32 * 32) name=({{dsl.interface}} . "-critical") packet-mark=({{dsl.interface}} . "-critical-in") parent=({{dsl.interface}} . "-download") priority=2 queue=pcq-dst
+
+/queue tree add burst-limit=0 burst-threshold=0 burst-time=0s disabled=no limit-at=({{dsl.down}}*1000 / 32 * 10) max-limit=({{dsl.down}} * 1000 / 32 * 27) name=({{dsl.interface}} . "-medium") packet-mark=({{dsl.interface}} . "-medium-in") parent=({{dsl.interface}} . "-download") priority=5 queue=pcq-dst
+
+/queue tree add burst-limit=0 burst-threshold=0 burst-time=0s disabled=no limit-at=({{dsl.down}} * 1000 / 32 * 6) max-limit=({{dsl.down}} * 1000 / 32 * 20) name=({{dsl.interface}} . "-non-critical") packet-mark=({{dsl.interface}} . "-non-critical-in") parent=({{dsl.interface}} . "-download") priority=7 queue=pcq-dst
+{%endfor%}
+
+/ip firewall address-list add address=0.0.0.0/0 list=non-critical
+/interface sstp-client
+{%for vpn in routeros_vpn %}
+add connect-to={{vpn.server}} disabled=no name={{vpn.name}} password={{vpn.password}} username={{vpn.username}}
+{%endfor%}
+
+/ip firewall nat
+{% for rule in routeros_firewall %}
+{% for nat_rule in routeros_firewall[rule] %}
+add {% if nat_rule.comment is defined %}comment="{{ nat_rule.comment }}"{% endif %} action={{nat_rule.action}} chain={{ rule }} disabled={{nat_rule.disabled}} out-interface={{ nat_rule.out_interface }}
+{% endfor %}
+{% endfor%}
+
+/ip dhcp-server config set store-leases-disk=5m
+/ip dns set allow-remote-requests=yes cache-max-ttl=1w cache-size=2048KiB max-udp-packet-size=4096 servers=8.8.8.8,8.8.4.4
+
+/system identity set name={{routeros_identity}}
+
+/ip route
+{%for route in routeros_routes%}
+add comment="{{route.name}}" disabled=no distance={{route.distance}} dst-address={{route.dst_address}} gateway={{route.gateway}} {% if route.routing_mark is defined %}routing-mark={{route.routing_mark}}{% endif %}
+
+{% endfor %}
+
+/system ntp client set enabled=yes mode=unicast primary-ntp=79.107.99.220 secondary-ntp=147.102.224.241
+/tool bandwidth-server set allocate-udp-ports-from=2000 authenticate=no enabled=yes max-sessions=100
+
+/ppp profile set use-ipv6=no
+
+/system script add name=ifmonitor source={
+{
+:local route "0.0.0.0/0" 
+:local interfaces {{"{"}}{%for dsl in routeros_adsl %}"{{ dsl.interface }}"{% if not loop.last%};{% endif %}{% endfor %}{{"}"}}
+
+:local monitor {"8.8.8.8";"195.170.0.2";"194.30.220.119";"194.219.227.1";"176.126.38.133"}
+:local pingcount 1
+:local uptime "00:05:00" 
+:local interval "00:00:30" 
+:local recovery 
+# {"23:00:00";"07:00:00"}
+
+:local recovertime true
+:foreach i in=$interfaces do={
+  :if ([:len [/ip route find dst-address=$route gateway=$i static disabled=no]]>0) do={
+    :set recovertime false
+  }
+}
+:if ([:len $recovery]>0) do={
+  :foreach r in=$recovery do={
+    :if ([/system clock get time]>=$r && [/system clock get time]<$r+$interval) do={
+      :set recovertime true
+    }
+  }
+} else {
+  :set recovertime true
+}
+:foreach i in=$interfaces do={
+  :if ([:len [/interface find name=$i]]>0) do={
+    :local mresult false
+    :local clearconntrack false
+    :if ([/interface get $i running]) do={
+        :foreach m in=$monitor do={
+            :do {
+              :set mresult ($mresult || [/ping $m interface=$i count=$pingcount]>0)
+            } on-error={}
+        }
+    }
+    :local itype [/interface get $i type]
+    :local iuptime
+    :if ($itype="pppoe-out") do={
+        :set iuptime ([/interface pppoe-client monitor $i as-value]->"uptime")
+    }
+    :if ($itype="pptp-out") do={
+        :set iuptime ([/interface pptp-client monitor $i as-value]->"uptime")
+    }
+    :if ($itype="l2tp-out") do={
+        :set iuptime ([/interface l2tp-client monitor $i as-value]->"uptime")
+    }
+    :if ($mresult) do={
+        :if ($iuptime>$uptime) do={
+            :if ($recovertime && [:len [/ip route find dst-address=$route gateway=$i static disabled]]>0) do={
+                /ip route enable [find dst-address=$route gateway=$i static disabled]
+                :set clearconntrack true
+                :log error "Interface monitor: $i - Internet recovered (uptime: $iuptime)" 
+                :log warning "Interface monitor: $i - All routes enabled" 
+            }
+        } else {
+            :if ($iuptime<$interval) do={
+                :log error "Interface monitor: $i - Interface restarted (uptime: $iuptime)" 
+                :if ([:len [/ip route find dst-address=$route gateway=$i static disabled=no]]>0) do={
+                    :set clearconntrack true
+                }
+            }
+        }
+    } else {
+        :if ([:len [/ip route find dst-address=$route gateway=$i static disabled=no]]>0) do={
+            /ip route disable [find dst-address=$route gateway=$i static]
+            :if ([/interface get $i running]) do={
+                :set clearconntrack true
+            }
+            :log error "Interface monitor: $i - Internet lost (uptime: $iuptime)" 
+            :log warning "Interface monitor: $i - All routes disabled" 
+        }
+    }
+    :if ($clearconntrack) do={
+        :if ([/ip firewall service-port get sip disabled]) do={
+            /ip firewall connection remove [find src-address~":5060" protocol="udp"]
+            /ip firewall connection remove [find dst-address~":5060" protocol="udp"]
+            /ip firewall connection remove [find src-address~":5061" protocol="tcp"]
+            /ip firewall connection remove [find dst-address~":5061" protocol="tcp"]
+        } else {
+            /ip firewall connection remove [find connection-type="sip"]
+        }
+        :log warning "Interface monitor: $i - Connection tracking cleared" 
+    }
+  } else {
+    :log error "Interface monitor: $i - Interface not found!" 
+  }
+}
+}
+}
