@@ -2,5 +2,5 @@
 - name: Add Client in user manager
   raw: /tool user-manager router add {{item.client_router}}
   shared-secret={{item.shared_secret}} use-coa={{item.user_coa}} disabled={{item.disabled}};quit
-  when: item.client_router is defined and item.shared_secrete is defined
+  when: item.client_router is defined and item.shared_secret is defined
   with_items: {{mikrotik_user_manager}}
