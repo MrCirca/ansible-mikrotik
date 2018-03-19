@@ -3,6 +3,11 @@
  /user set {{ user.name }} password={{ user.password }}
 {% endfor %}
 
+/interface ethernet
+{% for id in routeros_ethernet %}
+set {{id.interface_number}} {{id.name}} name={{id.name}}
+{% endfor %}
+
 {% for bridge in routeros_bridge_interfaces %}
 /interface bridge add disabled=no name={{ bridge }}
 {% for port in routeros_bridge_interfaces[bridge].ports %}
