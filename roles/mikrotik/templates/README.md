@@ -103,16 +103,81 @@ routeros_routes:
     routing_mark: dsl1-only
 
 ```
-For firewall src-nat
+For firewall
 ```
 routeros_firewall:
-  src-nat:
-    - comment: comment_test1
-      action: masquerade
-      out_interface: adsl1
-      disabled: "no"
-    - comment: comment_test2
-      action: masquerade
-      out_interface: adsl2
-      disabled: "no"
+  address_lists:
+    critical:
+      - 192.168.0.0/24
+    medium:
+      - 192.168.1.0/24
+    non-critical:
+      - 192.168.1.2/24
+  chains:
+    src-nat:
+      - comment: comment_test1
+  address_lists:
+    critical:
+      - 192.168.0.0/24
+    medium:
+      - 192.168.1.0/24
+    non-critical:
+      - 192.168.1.2/24
+  chains:
+    src-nat:
+      - comment: comment_test1
+        action: masquerade
+        out_interface: adsl1
+        disabled: "no"
+      - comment: comment_test2
+        action: masquerade
+        out_interface: adsl2
+        disabled: "no"
+    postrouting:
+      - comment: fefefefe
+        action: mark-packet
+        out_interface: adsl1
+        src_address_list: medium
+        dscp:
+          - 6
+          - 11
+          - 24
+          - 26
+          - 40
+          - 46
+          - 48
+        disabled: "no"
+        passthrough: "yes"
+        tcp_flags:
+      - comment:
+        action: mark-packet
+        out_interface: adsl2
+        connection_type: sip
+        src_address_list: critical
+        protocol: udp
+        dscp:
+          - 11
+          - 6
+          - 46
+          - 40
+          - 48
+          - 24
+          - 26
+        disabled: "no"
+        passthrough: "yes"
+    forward:
+      - comment:
+        action: mark-packet
+        in_interface: adsl1
+        src_address_list: medium
+        disabled: "no"
+        dst_address_list: critical
+        passthrough: "yes"
+      - comment:
+        action: mark-packet
+        in_interface: adsl2
+        disabled: "no"
+        dst_address_list: medium
+        passthrough: "yes"
+
 ```
