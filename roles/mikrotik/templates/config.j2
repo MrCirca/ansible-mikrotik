@@ -80,11 +80,9 @@ add connect-to={{vpn.server}} disabled=no name={{vpn.name}} password={{vpn.passw
 {%endfor%}
 
 /ip firewall nat
-{#{% for rule in routeros_firewall %}
-{% for nat_rule in routeros_firewall[rule] %}
-add {% if nat_rule.comment is defined %}comment="{{ nat_rule.comment }}"{% endif %} action={{nat_rule.action}} chain={{ rule }} disabled={{nat_rule.disabled}} out-interface={{ nat_rule.out_interface }}
+{% for rule in routeros_firewall.chains["src-nat"] %}
+add {% if rule.comment is defined %}comment="{{ rule.comment }}"{% endif %} action={{rule.action}} chain=src-nat disabled={{ rule.disabled}} out-interface={{ rule.out_interface }}
 {% endfor %}
-{% endfor%}#}
 
 /ip dhcp-server config set store-leases-disk=5m
 /ip dns set allow-remote-requests=yes cache-max-ttl=1w cache-size=2048KiB max-udp-packet-size=4096 servers=8.8.8.8,8.8.4.4
