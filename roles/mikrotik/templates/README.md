@@ -103,19 +103,9 @@ routeros_routes:
     routing_mark: dsl1-only
 
 ```
-For firewall
+For Firewall
 ```
 routeros_firewall:
-  address_lists:
-    critical:
-      - 192.168.0.0/24
-    medium:
-      - 192.168.1.0/24
-    non-critical:
-      - 192.168.1.2/24
-  chains:
-    src-nat:
-      - comment: comment_test1
   address_lists:
     critical:
       - 192.168.0.0/24
@@ -139,7 +129,7 @@ routeros_firewall:
         out_interface: adsl1
         src_address_list: medium
         dscp:
-          - 6
+ 		  - 6
           - 11
           - 24
           - 26

@@ -73,8 +73,8 @@ add action={{rule.action}} chain=forward disabled={{ rule.disabled }} in-interfa
 /queue tree add burst-limit=0 burst-threshold=0 burst-time=0s disabled=no limit-at=({{dsl.down}} * 1000 / 32 * 6) max-limit=({{dsl.down}} * 1000 / 32 * 20) name=({{dsl.interface}} . "-non-critical") packet-mark=({{dsl.interface}} . "-non-critical-in") parent=({{dsl.interface}} . "-download") priority=7 queue=pcq-dst
 {% endfor %}
 
-{% for address_list in routeros_address_lists %}
-{% for ip in routeros_address_lists[address_list].ip_addresses %}
+{% for address_list in routeros_firewall.address_lists %}
+{% for ip in routeros_firewall.address_lists[address_list]%}
 /ip firewall address-list add list={{ address_list }} address={{ip}}
 {% endfor %}
 {% endfor %}
