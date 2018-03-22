@@ -5,7 +5,7 @@ routeros_users:
   - name: "admin"
     password: "123321" 
 ```
-For ethernet interfaces **the name of ethernet interface should be defined to routeros_adsl:interface and in firewall in/out_interface **
+For ethernet interfaces..the name of ethernet interface should be defined to routeros_adsl (interface) and to firewall (in/out_interface) **
 ```
 routeros_ethernet:
   - name: adsl1 
