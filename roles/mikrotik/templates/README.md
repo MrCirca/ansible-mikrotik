@@ -155,7 +155,7 @@ routeros_firewall:
           - 26
         disabled: "no"
         passthrough: "yes"
-    forward:
+    mangle_forward:
       - comment:
         action: mark-packet
         in_interface: adsl1
@@ -169,5 +169,38 @@ routeros_firewall:
         disabled: "no"
         dst_address_list: medium
         passthrough: "yes"
-
+    input:
+      - comment: Allow VPNs IN
+        action: accept
+        disabled: "no"
+        dst_port: 1723
+        protocol: tcp
+      - comment: Allow ICMP
+        action: accept
+        disabled: "no"
+        protocol: icmp
+      - comment: Reject input from DSL1
+        action: reject
+        disabled: "no"
+        in_interface: ether5
+        reject_with: icmp-network-unreachable
+        protocol: icmp
+      - comment: Reject input from DSL2
+        action: reject
+        disabled: "no"
+        in_interface: ether5
+        reject_with: icmp-network-unreachable
+        protocol: icmp
+    forward:
+      - comment: Accept guests internet
+        action: accept
+        disabled: "no"
+        in_interface: bridge2
+        out_interface: ether5
+      - comment: Accept guests intertet
+        action: reject
+        disabled: "no"
+        in_interface: bridge2
+        out_interface: ether6
+        reject_with: icmp-network-unreachable
 ```
