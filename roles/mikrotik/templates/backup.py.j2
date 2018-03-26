@@ -3,8 +3,8 @@ DEFAULT_DEVICE_GROUP = {
     'devices': [
     {% for client in clients_router %}
       {% for ip in client %}
-        {"name":"{{client[ip]}}", "ip":"{{ip}}"},
-      {%endfor%}
+        {"name":"{{client[ip]}}", "ip":"{{ip}}"}{% endfor %}{% if not loop.last %},{% endif %}
+
     {% endfor %}
 
     ],
