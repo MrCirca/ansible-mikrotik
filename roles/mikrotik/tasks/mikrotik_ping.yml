@@ -1,0 +1,3 @@
+---
+- name: Ping 8.8.8.8
+  raw: ping count=2 8.8.8.8; quit

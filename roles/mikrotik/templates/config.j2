@@ -38,7 +38,7 @@ add action={{ rule.action }} chain=postrouting disabled={{ rule.disabled }} dscp
 {%if rule.connection_type is defined%}add action={{rule.action}} chain=postrouting connection-type={{rule.connection_type}} disabled={{rule.disabled}} new-packet-mark=({{rule.out_interface}} . "-{{ rule.src_address_list }}-voip-out") out-interface={{ rule.out_interface }} passthrough={{rule.passthrough}} src-address-list={{rule.src_address_list}}{% endif %}
 add action={{ rule.action }} chain=postrouting disabled={{ rule.disabled }} new-packet-mark=({{rule.out_interface }} . "-{{rule.src_address_list}}-out") out-interface={{ rule.out_interface}} passthrough={{ rule.passthrough }} src-address-list={{ rule.src_address_list }}
 {% endfor %}
-{% for rule in routeros_firewall.chains.forward %}
+{% for rule in routeros_firewall.chains.mangle_forward %}
 add action={{rule.action}} chain=forward disabled={{ rule.disabled }} in-interface={{ rule.in_interface }} new-packet-mark=({{rule.in_interface}} . "{{rule.dst_address_list}}-in") passthrough={{ rule.passthrough }}
 {% endfor %}
 
@@ -74,19 +74,30 @@ add action={{rule.action}} chain=forward disabled={{ rule.disabled }} in-interfa
 {% endfor %}
 
 {% for address_list in routeros_firewall.address_lists %}
-{% for ip in routeros_firewall.address_lists[address_list]%}
+{% for ip in routeros_firewall.address_lists[address_list] %}
 /ip firewall address-list add list={{ address_list }} address={{ip}}
 {% endfor %}
 {% endfor %}
 
 /interface sstp-client
 {%for vpn in routeros_vpn %}
-add connect-to={{vpn.server}} disabled=no name={{vpn.name}} password={{vpn.password}} username={{vpn.username}}
-{%endfor%}
+add connect-to={{ vpn.server }} disabled=no name={{ vpn.name }} password={{ vpn.password }} username={{ vpn.username }}
+{% endfor %}
+
+/ip firewall filter
+{% for rule in routeros_firewall.chains.input %}
+add action={{ rule.action }} chain=input comment="{{ rule.comment }}" disabled={{ rule.disabled }} {% if rule.dst_port is defined %}dst-port={{ rule.dst_port }}{% endif %} {% if rule.src_port is defined %}src-port={{ rule.src_port }}{% endif %} protocol={{rule.protocol}} {% if rule.in_interface is defined %}in-interface={{ rule.in_interface }}{% endif %} {% if rule.action == "reject" and rule.reject_with is defined %}reject-with={{ rule.reject_with }}{% endif %}{% if rule.connection_state is defined%}connection-state={{ rule.connection_state}}{% endif %}
+
+{% endfor %}
+
+{% for rule in routeros_firewall.chains.forward %}
+add action={{ rule.action}} chain=forward comment="{{ rule.comment }}" disabled={{ rule.disabled }} {% if rule.in_interface is defined %}in-interface={{ rule.in_interface }}{% endif %} {%if rule.out_interface is defined %}out-interface={{ rule.out_interface}}{% endif %} {% if rule.action == "reject" and rule.reject_with is defined%}reject-with={{ rule.reject_with}}{%endif%}
+
+{% endfor %}
 
 /ip firewall nat
 {% for rule in routeros_firewall.chains["src-nat"] %}
-add {% if rule.comment is defined %}comment="{{ rule.comment }}"{% endif %} action={{rule.action}} chain=src-nat disabled={{ rule.disabled}} out-interface={{ rule.out_interface }}
+add {% if rule.comment is defined %} comment="{{ rule.comment }}"{% endif %} action={{rule.action}} chain=src-nat disabled={{ rule.disabled}} out-interface={{ rule.out_interface }}
 {% endfor %}
 
 /ip dhcp-server config set store-leases-disk=5m

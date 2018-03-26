@@ -1,0 +1,10 @@
+---
+- name: Set non sensitive write group permission
+  raw: /user group set write policy=!sensitive; quit
+
+- name: Set non sensitive read group permission
+  raw: /user group set read policy=!sensitive; quit
+
+- name: Set default-group write to radius-users
+  raw: /user group set write policy=policy; quit
+
